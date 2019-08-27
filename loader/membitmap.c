@@ -1,4 +1,4 @@
-#include "memBitmap.h"
+#include "membitmap.h"
 #include <stddef.h>
 
 #define INDEX(a) (a/32)
@@ -15,7 +15,7 @@ static int regionsExclude(uint32_t r1_start, uint32_t r1_len, uint32_t r2_start,
     return r1_start + r1_len <= r2_start || r1_start >= r2_end;
 }
 
-static void setFrame(uint32_t addr)
+void setFrame(uint32_t addr)
 {
     uint32_t page = addr >> 12;
     uint32_t idx = INDEX(page);
@@ -23,7 +23,7 @@ static void setFrame(uint32_t addr)
     bitmap[idx] |= (1 << off);
 }
 
-static void clearFrame(uint32_t addr)
+void clearFrame(uint32_t addr)
 {
     uint32_t page = addr >> 12;
     uint32_t idx = INDEX(page);
@@ -31,7 +31,7 @@ static void clearFrame(uint32_t addr)
     bitmap[idx] &= ~(1 << off);
 }
 
-static uint8_t testFrame(uint32_t addr)
+uint8_t testFrame(uint32_t addr)
 {
     uint32_t page = addr >> 12;
     uint32_t idx = INDEX(page);
@@ -82,7 +82,7 @@ static void memBitmapMarkUnusable(mtag_mmap_t* mmap)
     }
 }
 
-void memBitmapPrepare(mtag_mmap_t* mmap) {
+static void memBitmapPrepare(mtag_mmap_t* mmap) {
     uint32_t entry_addr = (uint32_t)mmap + offsetof(mtag_mmap_t, entries);
 
     while (entry_addr < (uint32_t)mmap + mmap->size)
@@ -106,6 +106,8 @@ uint32_t memBitmapGetPhysMemSize() {
 // Avoid overwriting the kernel (which is a module) and the multiboot information structure
 uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot_info_t* mbi)
 {
+    memBitmapPrepare(mmap);
+
     uint32_t bitmapSize = (physicalMemSize >> 12) / 8;
     if (!regionsExclude(placementAddr, bitmapSize, kernel_mod->mod_start, kernel_mod->mod_end))
     {
@@ -138,10 +140,10 @@ uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot
         setFrame(page);
 
     // Mark the multiboot structure
-    uint32_t start_addr = ((uint32_t)mbi / 0x1000) * 0x1000;
-    uint32_t end_addr = (((uint32_t)mbi + mbi->total_size - 1) / 0x1000) * 0x1000;
+    start_addr = ((uint32_t)mbi / 0x1000) * 0x1000;
+    end_addr = (((uint32_t)mbi + mbi->total_size - 1) / 0x1000) * 0x1000;
     for (uint32_t page = start_addr; page <= end_addr; page += 0x1000)
         setFrame(page);
 
-    return placementAddr;
+    return (uint32_t) bitmap;
 }

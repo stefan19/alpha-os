@@ -13,22 +13,11 @@ void framebufferInit(mtag_framebuf_t* framebuf)
     fbuf = framebuf;
 }
 
-/* static uint32_t framebufferEncode(uint8_t red, uint8_t green, uint8_t blue)
-{
-    uint32_t pixel = 0;
-
-    pixel |= (red << fbuf->framebuffer_bpp) >> fbuf->framebuffer_red_field_pos;
-    pixel |= (green << fbuf->framebuffer_bpp) >> fbuf->framebuffer_green_field_pos;
-    pixel |= (blue << fbuf->framebuffer_bpp) >> fbuf->framebuffer_blue_field_pos;
-
-    return pixel;
-} */
-
 void framebufferPlotPixel(uint32_t x, uint32_t y, uint32_t color)
 {
     if(fbuf == NULL)
         return;
-    uint8_t* vmem = (uint8_t*)(fbuf->framebuffer_addr + fbuf->framebuffer_pitch * y + fbuf->framebuffer_bpp / 8 * x);
+    uint8_t* vmem = (uint8_t*)(0xE0000000 + fbuf->framebuffer_pitch * y + fbuf->framebuffer_bpp / 8 * x);
 
     vmem[fbuf->framebuffer_blue_field_pos/8] = color & 0xFF;
     vmem[fbuf->framebuffer_green_field_pos/8] = (color >> 8) & 0xFF;
@@ -42,7 +31,7 @@ void framebufferClear(uint32_t color)
     size_t x, y;
     for(y=0; y < fbuf->framebuffer_height; y++)
     {
-        vmem = (uint8_t*)(fbuf->framebuffer_addr + fbuf->framebuffer_pitch * y);
+        vmem = (uint8_t*)(0xE0000000 + fbuf->framebuffer_pitch * y);
 
         for(x=0; x < fbuf->framebuffer_width; x++)
         {
@@ -57,7 +46,7 @@ void framebufferClear(uint32_t color)
 
 void framebufferFillRct(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
 {
-    uint8_t* vmem = (uint8_t*)(fbuf->framebuffer_addr + fbuf->framebuffer_pitch * y + fbuf->framebuffer_bpp / 8 * x);
+    uint8_t* vmem = (uint8_t*)(0xE0000000 + fbuf->framebuffer_pitch * y + fbuf->framebuffer_bpp / 8 * x);
 
     size_t i, j, idx;
     for(j=y;j<y+h;j++)

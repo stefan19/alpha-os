@@ -4,7 +4,8 @@
 #include "framebuffer.h"
 #include "psf.h"
 #include "string.h"
-#include "memBitmap.h"
+#include "vmem.h"
+#include "elf.h"
 
 char * itoa( int value, char * str, int base )
 {
@@ -68,7 +69,6 @@ void loader_main(multiboot_info_t* mbi)
         if(tag->type == MBOOT_INFO_MMAP)
         {
             mmap = (mtag_mmap_t*) tag;
-            memBitmapPrepare((mtag_mmap_t*)tag);
         }
 
         tagaddr = ((tagaddr + tag->size + 7) / 8) * 8;
@@ -85,24 +85,24 @@ void loader_main(multiboot_info_t* mbi)
         return;
     }
 
-    framebufferInit(fbuf);
+    /* framebufferInit(fbuf);
     framebufferClear(0xA0A0A0);
 
     psfOpen();
     psfSetPenPos(30, 30);
-    /* if(kernel_mod)
+    if(kernel_mod)
     {
         psfRenderText("Module found: ", fbuf);
         const char* name = (char*) kernel_mod + offsetof(mtag_mods_t, string);
         psfRenderText(name, fbuf);
-    } */
+    }
 
     char buffer[30];
-    psfRenderText("Physical memory size: ", fbuf);
-    itoa (memBitmapGetPhysMemSize(), buffer, 16);
-    psfRenderText(buffer, fbuf);
+    psfRenderText("Framebuffer address: ", fbuf);
+    itoa ((uint32_t)fbuf->framebuffer_addr, buffer, 16);
+    psfRenderText(buffer, fbuf); */
 
-    psfSetPenPos(30, 44);
+    /*psfSetPenPos(30, 44);
     psfRenderText("Bitmap address: ", fbuf);
     itoa (memBitmapAllocate(kernel_mod, mmap, mbi), buffer, 16);
     psfRenderText(buffer, fbuf);
@@ -135,7 +135,16 @@ void loader_main(multiboot_info_t* mbi)
     
     const char* text = "The system is loading.";
     psfSetPenPos(fbuf->framebuffer_width / 2 - strlen(text) * 4, fbuf->framebuffer_height*3/4);
-    psfRenderText(text, fbuf);
+    psfRenderText(text, fbuf); */
+
+    vmemInit(kernel_mod, mmap, fbuf, mbi);
+
+    framebufferInit(fbuf);
+    framebufferClear(0xA0A0A0);
+
+    elfLoadFromMem((void*)kernel_mod->mod_start);
+
+    for(;;);
 
     //psfRender(x, fbuf->framebuffer_height * 3 / 4, strlen(text) + '0');
     //x += 8;
