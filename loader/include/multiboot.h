@@ -30,6 +30,11 @@
 #define MBOOT_FRAMEBUF_DIRECT   1
 #define MBOOT_FRAMEBUF_EGATEXT  2
 
+#define MBOOT_MEM_AVAILABLE     1
+#define MBOOT_MEM_ACPI          3
+#define MBOOT_MEM_RESERVED      4
+#define MBOOT_MEM_DEFECTIVE     5
+
 typedef struct
 {
     uint32_t total_size;
@@ -83,6 +88,14 @@ typedef struct
     uint32_t entry_version;
     uint8_t  entries;
 } __attribute__((packed)) mtag_mmap_t;
+
+typedef struct
+{
+    uint64_t base_addr;
+    uint64_t length;
+    uint32_t type;
+    uint32_t reserved;
+} __attribute__((packed)) mmap_entry_t;
 
 typedef struct
 {

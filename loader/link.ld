@@ -35,4 +35,6 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
+
+	loader_end = .; _loader_end = .; __loader_end = .;
 }

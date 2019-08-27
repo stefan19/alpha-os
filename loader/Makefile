@@ -1,6 +1,6 @@
 TARGET := i686-elf
 CROSSDIR := $(HOME)/opt/cross/bin
-ROOT := $(HOME)/Documents/loader
+ROOT := $(HOME)/Documents/OS/loader
 
 CC := $(CROSSDIR)/$(TARGET)-gcc
 LINKER := $(CROSSDIR)/$(TARGET)-gcc
