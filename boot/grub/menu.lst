@@ -1,0 +1,7 @@
+timeout 5
+default OS
+
+title OS
+root (fd0)
+kernel /i386-kernel
+boot
