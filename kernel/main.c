@@ -55,18 +55,18 @@ void kmain(uint32_t bitmapAddr, uint32_t bitmapSize, multiboot_info_t* mbi, uint
     asm volatile("sti");
     
     initPaging(bitmapAddr, bitmapSize, loader_end);
-    kheapInit(0xD0000000, 0xD8000000, 5);
-
+    kheapInit(0xD0000000, 0xD8000000, 4);
+ 
     vfsInit();
     devmgrInit();
 
-    /* pciCheckAllBuses();
-    ideEnumerateDrives();
-    mbrInit();
-    fat32InitVolume("ata0p0"); */
+    pciCheckAllBuses();
+    ideEnumerateDrives(); 
 
     ps2Initialise();
     ps2KbdInit();
+
+    displayHeapStructure();
 
     /* vnode* root = vfsOpen("/");
     printf("Listing root directory: \n");

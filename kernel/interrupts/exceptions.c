@@ -28,17 +28,17 @@ const char error_strings[21][87] = {
 
 void exceptionHandler(const interrupt_frame_t* frame)
 {
-    consoleWriteStrColor("\nFATAL ERROR: ", vgaColor(VGA_RED, VGA_BLACK));
+    consoleWriteStrColor("\nFATAL ERROR: ", 0xD00000);
     if(frame->int_no <= 20)
-        consoleWriteStrColor(error_strings[frame->int_no], vgaColor(VGA_RED, VGA_BLACK));   
+        consoleWriteStrColor(error_strings[frame->int_no], 0xD00000);   
     else if(frame->int_no == 30)
-        consoleWriteStrColor("security exception", vgaColor(VGA_RED, VGA_BLACK));
+        consoleWriteStrColor("security exception", 0xD00000);
     else
-        consoleWriteStrColor("?", vgaColor(VGA_RED, VGA_BLACK));
+        consoleWriteStrColor("?", 0xD00000);
 
     if(frame->int_no == 14)
     {
-        consoleWriteStrColor(" at address: ", vgaColor(VGA_RED, VGA_BLACK));
+        consoleWriteStrColor(" at address: ", 0xD00000);
         consoleWriteHex(readCR2());
         int p, user, rw;
         p = frame->err_code & 0x1;
