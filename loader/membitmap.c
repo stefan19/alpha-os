@@ -117,7 +117,9 @@ uint32_t memBitmapGetAddr()
 
 multiboot_info_t* memBitmapGetMBI()
 {
-    return (multiboot_info_t*)((void*)bitmap + (physicalMemSize>>12)/8);
+    uint32_t mbiAddr = (void*)bitmap + (physicalMemSize >> 15);
+    mbiAddr = ((mbiAddr + 7) / 8) * 8;
+    return (multiboot_info_t*)mbiAddr;
 }
 
 // Find a physical region to store the memory bitmap (which will be used in the kernel-proper)
@@ -127,7 +129,7 @@ uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot
     memBitmapPrepare(mmap);
 
     placementAddr = ((placementAddr+0x1000-1)/0x1000) * 0x1000;
-    bitmapSize = (physicalMemSize >> 12) / 8 + mbi->total_size;
+    bitmapSize = (physicalMemSize >> 12) / 8 + mbi->total_size + 8;
 
     if (!regionsExclude(placementAddr, bitmapSize, kernel_mod->mod_start, kernel_mod->mod_end))
     {
@@ -136,7 +138,9 @@ uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot
 
     placementAddr = ((placementAddr+0x1000-1)/0x1000) * 0x1000;
     bitmap = (uint32_t*) placementAddr;
-    memmove((void*)placementAddr + (physicalMemSize >> 12) / 8, mbi, mbi->total_size);
+    uint32_t mbiAddr = placementAddr + (physicalMemSize >> 12) / 8;
+    mbiAddr = ((mbiAddr + 7) / 8) * 8;
+    memmove((void*)mbiAddr, mbi, mbi->total_size);
 
     memBitmapMarkUnusable(mmap);
 

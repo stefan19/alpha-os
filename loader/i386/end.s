@@ -7,5 +7,6 @@ jump_kernel:
     mov ebx, [esp + 8]
     mov ecx, [esp + 12]
     mov edx, [esp + 16]
+    mov edi, [esp + 20]
     
     jmp [esp + 4]

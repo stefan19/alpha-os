@@ -17,13 +17,13 @@ typedef struct pt_entry
     uint32_t frame      : 20;
 }__attribute__((packed)) pt_entry_t;
 
-void initPagingStructures(multiboot_mmap_t*, uint32_t, uint32_t);
-void initPaging(void);
+void initPaging(uint32_t bitmapAddr, uint32_t bitmapSize, uint32_t loaderEnd);
 extern void loadPageDirectory(uint32_t addr);
 extern void enablePaging();
 extern void invalidatePage(uint32_t addr);
 uint32_t getPhysAddress(uint32_t virtAddress);
 void mapVirtAddress(uint32_t virtAddress, uint32_t physAddress, uint8_t user);
+void unmap(uint32_t vaddr);
 void requestPage(uint32_t vaddr);
 void requestPageUser(uint32_t vaddr);
 

@@ -9,9 +9,6 @@ uint32_t NFRAMES;
 uint32_t* bitmap;
 uint32_t* kernel_directory;
 
-extern char end;
-uint32_t placement_addr;
-
 static void setFrame(uint32_t addr)
 {
     uint32_t page = addr >> 12;
@@ -56,90 +53,20 @@ static uint32_t freeFrame()
     return -1;
 }
 
-static uint32_t memAlloc(uint8_t align, uint32_t size)
+void initPaging(uint32_t bitmapAddr, uint32_t bitmapSize, uint32_t loaderEnd)
 {
-    if(align == 1)
+    bitmap = (uint32_t*) bitmapAddr;
+    NFRAMES = bitmapSize << 3;
+    printf("Number of available frames: %x", NFRAMES);
+    printf("\nBitmap address: %x", (uint32_t)bitmap);
+
+    for(uint32_t i=0x100000;i<loaderEnd;i+=0x1000)
     {
-        placement_addr = (placement_addr - 1) & 0xFFFFF000;
-        placement_addr += 0x1000;
+        unmap(i);
+        clearFrame(i);
     }
 
-    uint32_t tmp = placement_addr;
-    placement_addr += size;
-    return tmp;
-}
-
-void earlyMapPage(uint32_t addr, uint32_t physAddr)
-{
-    //Turn the address into an index
-    addr = addr >> 12;
-    uint32_t tbl_idx = addr >> 10;
-
-    pt_entry_t* table = (pt_entry_t*)((kernel_directory[tbl_idx] & 0xFFFFF000) + 0xBFF00000);
-
-    //Create table if needed
-    if(kernel_directory[tbl_idx] == 0)
-    {
-        table = (pt_entry_t*)memAlloc(1, 0x1000);
-        setFrame((uint32_t)table-0xBFF00000);
-        memset(table, 0, 0x1000);
-
-        kernel_directory[tbl_idx] = ((uint32_t)table-0xBFF00000) | 0x7;
-    }
-
-    //Create page entry
-    setFrame(physAddr);
-
-    table[addr & 0x3FF].frame = physAddr >> 12;
-    table[addr & 0x3FF].present = 1;
-    table[addr & 0x3FF].rw = 1;
-    table[addr & 0x3FF].user = 0;
-}
-
-void initPagingStructures(multiboot_mmap_t* memoryMap, uint32_t mmapAddr, uint32_t mmapLength)
-{
-    multiboot_mmap_t* mmap = memoryMap;
-
-    uint32_t usableMemEnd = 0;
-    while((uint32_t)mmap < mmapAddr + mmapLength)
-    {
-        if(mmap->addr > usableMemEnd && mmap->type == 1)
-            usableMemEnd = mmap->addr + mmap->len;
-        /* consoleWriteStr("\nMemory: ");
-        consoleWriteHex(mmap->addr);
-        consolePutch(' ');
-        consoleWriteHex(mmap->len);
-        if(mmap->type == 1)
-            consoleWriteStr(" usable"); */
-        mmap = (multiboot_mmap_t*)( (uint32_t)mmap + mmap->size + sizeof(mmap->size)); 
-    }
-
-    NFRAMES = usableMemEnd / 0x1000;
-
-    placement_addr = (uint32_t)&end;
-    bitmap = (uint32_t*)memAlloc(0, NFRAMES/8);
-    memset(bitmap, 0, NFRAMES/8);
-
-    mmap = memoryMap;
-    while((uint32_t)mmap < mmapAddr + mmapLength)
-    {
-        if(mmap->type != 1)
-        {
-            //Mark unusable RAM as such
-            uint32_t startingFrame = mmap->addr / 0x1000;
-            uint32_t endFrame = (mmap->addr + mmap->len - 1) / 0x1000 + 1;
-            for(uint32_t i=startingFrame;i<endFrame && i<NFRAMES;i++)
-            {
-                setFrame(i*0x1000);
-            }
-        }
-        mmap = (multiboot_mmap_t*)( (uint32_t)mmap + mmap->size + sizeof(mmap->size)); 
-    }
-}
-
-void initPaging(void)
-{
-    //Create an empty page directory (kernel's)
+    /* //Create an empty page directory (kernel's)
     kernel_directory = (uint32_t*)memAlloc(1, 0x1000);
     memset(kernel_directory, 0, 0x1000);
     setFrame((uint32_t)kernel_directory-0xBFF00000);
@@ -155,7 +82,7 @@ void initPaging(void)
     //Map the last page table to the directory itself
     kernel_directory[0x3FF] = ((uint32_t)kernel_directory - 0xBFF00000) | 0x3;
 
-    loadPageDirectory((uint32_t)kernel_directory-0xBFF00000);
+    loadPageDirectory((uint32_t)kernel_directory-0xBFF00000); */
 }
 
 uint32_t getPhysAddress(uint32_t virtAddress)
@@ -198,6 +125,21 @@ void mapVirtAddress(uint32_t virtAddress, uint32_t physAddress, uint8_t user)
     pt[ptindex].frame = physAddress >> 12;
 
     invalidatePage(virtAddress);
+}
+
+void unmap(uint32_t vaddr)
+{
+    uint32_t pdindex = vaddr >> 22;
+    uint32_t ptindex = (vaddr >> 12) & 0x3FF;
+
+    uint32_t* pd = (uint32_t*) 0xFFFFF000;
+    if (pd[pdindex] == 0)
+        return;
+    
+    uint32_t* pt = (uint32_t*) (0xFFC00000 + 0x1000 * pdindex);
+    pt[ptindex] = 0;
+
+    invalidatePage(vaddr);
 }
 
 int checkPage(uint32_t virtAddress)

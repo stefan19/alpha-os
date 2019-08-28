@@ -16,9 +16,10 @@ mov esp, stack_top
 
 extern kmain
 cld
-push ebx
-push ecx
+push edi
 push edx
+push ecx
+push ebx
 call kmain				;jump in the kernel proper
 
 .hang:	

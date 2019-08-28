@@ -8,46 +8,8 @@
 #include "elf.h"
 #include "membitmap.h"
 
-char * itoa( int value, char * str, int base )
-{
-    char * rc;
-    char * ptr;
-    char * low;
-    // Check for supported base.
-    if ( base < 2 || base > 36 )
-    {
-        *str = '\0';
-        return str;
-    }
-    rc = ptr = str;
-    // Set '-' for negative decimals.
-    if ( value < 0 && base == 10 )
-    {
-        *ptr++ = '-';
-    }
-    // Remember where the numbers start.
-    low = ptr;
-    // The actual conversion.
-    do
-    {
-        // Modulo is negative for negative value. This trick makes abs() unnecessary.
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-        value /= base;
-    } while ( value );
-    // Terminating the string.
-    *ptr-- = '\0';
-    // Invert the numbers.
-    while ( low < ptr )
-    {
-        char tmp = *low;
-        *low++ = *ptr;
-        *ptr-- = tmp;
-    }
-    return rc;
-}
-
 extern uint32_t loader_end;
-extern void jump_kernel(uint32_t entry, uint32_t bitmapAddr, uint32_t bitmapSize, uint32_t mbi);
+extern void jump_kernel(uint32_t entry, uint32_t bitmapAddr, uint32_t bitmapSize, uint32_t mbi, uint32_t loader_end);
 
 void loader_exit(uint32_t entry, uint32_t newBitmapAddr)
 {
@@ -57,10 +19,11 @@ void loader_exit(uint32_t entry, uint32_t newBitmapAddr)
         unmap(page);
     }
 
-    uint32_t bitmapSize = (memBitmapGetPhysMemSize() >> 12) / 8;
-    uint32_t mbi = newBitmapAddr + bitmapSize;
+    uint32_t bitmapSize = memBitmapGetPhysMemSize() >> 15;
+    uint32_t mbiAddr = newBitmapAddr + bitmapSize;
+    mbiAddr = ((mbiAddr + 7) / 8) * 8;
 
-    jump_kernel(entry, newBitmapAddr, bitmapSize, mbi);
+    jump_kernel(entry, newBitmapAddr, bitmapSize, mbiAddr, (uint32_t)&loader_end);
 }
 
 void loader_main(multiboot_info_t* mbi)
@@ -102,24 +65,10 @@ void loader_main(multiboot_info_t* mbi)
     if(mmap_tag == NULL)
         return;
 
-    /*psfSetPenPos(30, 100);
-    psfRenderText("First free frame: ", fbuf);
-    itoa ((uint32_t)freeFrame()*0x1000, buffer, 16);
-    psfRenderText(buffer, fbuf);
-    
-    const char* text = "The system is loading.";
-    psfSetPenPos(fbuf->framebuffer_width / 2 - strlen(text) * 4, fbuf->framebuffer_height*3/4);
-    psfRenderText(text, fbuf); */
-
     uint32_t newBitmapAddr = vmemInit(kernel_mod, mmap_tag, fbuf, mbi);
+    
     multiboot_info_t* new_mbi = memBitmapGetMBI();
     kernel_mod = (mtag_mods_t*)((void*)kernel_mod - (void*)mbi + (void*)new_mbi);
-    mmap_tag = (mtag_mmap_t*)((void*)mmap_tag - (void*)mbi + (void*)new_mbi);
-    fbuf = (mtag_framebuf_t*)((void*)fbuf - (void*)mbi + (void*)new_mbi);
-    mbi = new_mbi;
-
-    framebufferInit(fbuf);
-    framebufferClear(0xA0A0A0);
 
     uint32_t entry = elfLoadFromMem((void*)kernel_mod->mod_start);
     if(entry == 0)
@@ -131,15 +80,6 @@ void loader_main(multiboot_info_t* mbi)
         clearFrame(i);
         unmap(i);
     }
-
-    char buffer[30];
-    psfSetPenPos(30, 30);
-    psfRenderText("Bitmap address: ", fbuf);
-    itoa ((uint32_t)memBitmapGetAddr(), buffer, 16);
-    psfRenderText(buffer, fbuf);
-    psfRenderText(", size: ", fbuf);
-    itoa ((uint32_t)memBitmapGetTotalSize()-new_mbi->total_size, buffer, 16);
-    psfRenderText(buffer, fbuf);
     
     loader_exit(entry, newBitmapAddr);
 }

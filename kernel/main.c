@@ -18,6 +18,8 @@
 #include "ps2.h"
 #include "ps2kbd.h"
 #include "process.h"
+#include "framebuffer.h"
+#include "psf.h"
 
 #include "stdio.h"
 #include "string.h"
@@ -39,15 +41,11 @@ void kthread()
     for(;;);
 }
  
-void kmain(multiboot_info_t* multibootInfo, uint32_t* bitmap, uint32_t* kernel_mod)
+void kmain(uint32_t bitmapAddr, uint32_t bitmapSize, multiboot_info_t* mbi, uint32_t loader_end)
 {
-    uint8_t* vmem = (uint8_t*) 0xE0000000;
-    vmem[0] = 0xff;
-    vmem[1] = 0xff;
-    vmem[2] = 0;
-    
-    /* consoleClr();
-    printf("Multiboot structure: %x\nFlags: %x", (uint32_t)multibootInfo, multibootInfo->flags);
+    framebufferInit(mbi);
+    consoleInit(0, 0xD0D0D0);
+    consoleWriteStr("The system is now running\n");
     
     gdtInit();
     picInit(0x20, 0x28);
@@ -56,24 +54,19 @@ void kmain(multiboot_info_t* multibootInfo, uint32_t* bitmap, uint32_t* kernel_m
     timerInit(100);
     asm volatile("sti");
     
-    printf("The system is now running. Lower memory: %u kb, upper memory: %u kb", 
-        multibootInfo->mem_lower, multibootInfo->mem_upper);
-
-    multiboot_mmap_t* mmap = (multiboot_mmap_t*)multibootInfo->mmap_addr;
-    initPagingStructures(mmap, multibootInfo->mmap_addr, multibootInfo->mmap_length);
-    initPaging();
+    initPaging(bitmapAddr, bitmapSize, loader_end);
     kheapInit(0xD0000000, 0xD8000000, 5);
 
     vfsInit();
-    devmgrInit(); */
+    devmgrInit();
 
     /* pciCheckAllBuses();
     ideEnumerateDrives();
     mbrInit();
     fat32InitVolume("ata0p0"); */
 
-    //ps2Initialise();
-    //ps2KbdInit();
+    ps2Initialise();
+    ps2KbdInit();
 
     /* vnode* root = vfsOpen("/");
     printf("Listing root directory: \n");
