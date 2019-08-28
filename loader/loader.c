@@ -6,6 +6,7 @@
 #include "string.h"
 #include "vmem.h"
 #include "elf.h"
+#include "membitmap.h"
 
 char * itoa( int value, char * str, int base )
 {
@@ -46,6 +47,21 @@ char * itoa( int value, char * str, int base )
 }
 
 extern uint32_t loader_end;
+extern void jump_kernel(uint32_t entry, uint32_t bitmapAddr, uint32_t bitmapSize, uint32_t mbi);
+
+void loader_exit(uint32_t entry, uint32_t newBitmapAddr)
+{
+    // Unmap the bitmap + mboot structure
+    for(uint32_t page = memBitmapGetAddr(); page < memBitmapGetAddr() + memBitmapGetTotalSize(); page += 0x1000)
+    {
+        unmap(page);
+    }
+
+    uint32_t bitmapSize = (memBitmapGetPhysMemSize() >> 12) / 8;
+    uint32_t mbi = newBitmapAddr + bitmapSize;
+
+    jump_kernel(entry, newBitmapAddr, bitmapSize, mbi);
+}
 
 void loader_main(multiboot_info_t* mbi)
 {
@@ -54,7 +70,7 @@ void loader_main(multiboot_info_t* mbi)
     mtag_generic_t* tag = (mtag_generic_t*) tagaddr;
     mtag_framebuf_t* fbuf = NULL;
     mtag_mods_t* kernel_mod = NULL;
-    mtag_mmap_t* mmap = NULL;
+    mtag_mmap_t* mmap_tag = NULL;
 
     while(tag->type != MBOOT_INFO_END)
     {
@@ -64,11 +80,13 @@ void loader_main(multiboot_info_t* mbi)
         }
         if(tag->type == MBOOT_INFO_MODS)
         {
-            kernel_mod = (mtag_mods_t*) tag;
+            char* name = (char*)tag + offsetof(mtag_mods_t, string);
+            if(strcmp(name, "kernel") == 0)
+                kernel_mod = (mtag_mods_t*)tag;
         }
         if(tag->type == MBOOT_INFO_MMAP)
         {
-            mmap = (mtag_mmap_t*) tag;
+            mmap_tag = (mtag_mmap_t*) tag;
         }
 
         tagaddr = ((tagaddr + tag->size + 7) / 8) * 8;
@@ -76,59 +94,15 @@ void loader_main(multiboot_info_t* mbi)
     }
 
     if(fbuf == NULL)
-    {
         return;
-    }
-        
     if(fbuf->framebuffer_type != MBOOT_FRAMEBUF_DIRECT)
-    {
         return;
-    }
+    if(kernel_mod == NULL)
+        return;
+    if(mmap_tag == NULL)
+        return;
 
-    /* framebufferInit(fbuf);
-    framebufferClear(0xA0A0A0);
-
-    psfOpen();
-    psfSetPenPos(30, 30);
-    if(kernel_mod)
-    {
-        psfRenderText("Module found: ", fbuf);
-        const char* name = (char*) kernel_mod + offsetof(mtag_mods_t, string);
-        psfRenderText(name, fbuf);
-    }
-
-    char buffer[30];
-    psfRenderText("Framebuffer address: ", fbuf);
-    itoa ((uint32_t)fbuf->framebuffer_addr, buffer, 16);
-    psfRenderText(buffer, fbuf); */
-
-    /*psfSetPenPos(30, 44);
-    psfRenderText("Bitmap address: ", fbuf);
-    itoa (memBitmapAllocate(kernel_mod, mmap, mbi), buffer, 16);
-    psfRenderText(buffer, fbuf);
-
-    psfSetPenPos(30, 58);
-    psfRenderText("Kernel module: ", fbuf);
-    itoa (kernel_mod->mod_start, buffer, 16);
-    psfRenderText(buffer, fbuf);
-    psfRenderText(", ", fbuf);
-    itoa (kernel_mod->mod_end, buffer, 16);
-    psfRenderText(buffer, fbuf);
-
-    psfSetPenPos(30, 72);
-    psfRenderText("Multiboot structure: ", fbuf);
-    itoa ((uint32_t)mbi, buffer, 16);
-    psfRenderText(buffer, fbuf);
-    psfRenderText(", ", fbuf);
-    itoa ((uint32_t)mbi + mbi->total_size, buffer, 16);
-    psfRenderText(buffer, fbuf);
-
-    psfSetPenPos(30, 86);
-    psfRenderText("Kernel end: ", fbuf);
-    itoa ((uint32_t)&loader_end, buffer, 16);
-    psfRenderText(buffer, fbuf);
-
-    psfSetPenPos(30, 100);
+    /*psfSetPenPos(30, 100);
     psfRenderText("First free frame: ", fbuf);
     itoa ((uint32_t)freeFrame()*0x1000, buffer, 16);
     psfRenderText(buffer, fbuf);
@@ -137,21 +111,35 @@ void loader_main(multiboot_info_t* mbi)
     psfSetPenPos(fbuf->framebuffer_width / 2 - strlen(text) * 4, fbuf->framebuffer_height*3/4);
     psfRenderText(text, fbuf); */
 
-    vmemInit(kernel_mod, mmap, fbuf, mbi);
+    uint32_t newBitmapAddr = vmemInit(kernel_mod, mmap_tag, fbuf, mbi);
+    multiboot_info_t* new_mbi = memBitmapGetMBI();
+    kernel_mod = (mtag_mods_t*)((void*)kernel_mod - (void*)mbi + (void*)new_mbi);
+    mmap_tag = (mtag_mmap_t*)((void*)mmap_tag - (void*)mbi + (void*)new_mbi);
+    fbuf = (mtag_framebuf_t*)((void*)fbuf - (void*)mbi + (void*)new_mbi);
+    mbi = new_mbi;
 
     framebufferInit(fbuf);
     framebufferClear(0xA0A0A0);
 
-    elfLoadFromMem((void*)kernel_mod->mod_start);
+    uint32_t entry = elfLoadFromMem((void*)kernel_mod->mod_start);
+    if(entry == 0)
+        return;
 
-    for(;;);
-
-    //psfRender(x, fbuf->framebuffer_height * 3 / 4, strlen(text) + '0');
-    //x += 8;
-    /* while(*text != '\0')
+    // The memory of the kernel image can be freed
+    for(uint32_t i = kernel_mod->mod_start; i < kernel_mod->mod_end; i += 0x1000)
     {
-        psfRender(x, fbuf->framebuffer_height * 3 / 4, *text);
-        x += 8;
-        text++;
-    } */
+        clearFrame(i);
+        unmap(i);
+    }
+
+    char buffer[30];
+    psfSetPenPos(30, 30);
+    psfRenderText("Bitmap address: ", fbuf);
+    itoa ((uint32_t)memBitmapGetAddr(), buffer, 16);
+    psfRenderText(buffer, fbuf);
+    psfRenderText(", size: ", fbuf);
+    itoa ((uint32_t)memBitmapGetTotalSize()-new_mbi->total_size, buffer, 16);
+    psfRenderText(buffer, fbuf);
+    
+    loader_exit(entry, newBitmapAddr);
 }

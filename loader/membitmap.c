@@ -1,4 +1,5 @@
 #include "membitmap.h"
+#include "string.h"
 #include <stddef.h>
 
 #define INDEX(a) (a/32)
@@ -6,6 +7,7 @@
 
 uint32_t* bitmap;
 uint32_t physicalMemSize = 0;
+uint32_t bitmapSize;
 
 extern uint32_t loader_end;
 uint32_t placementAddr = (uint32_t)&loader_end;
@@ -98,8 +100,24 @@ static void memBitmapPrepare(mtag_mmap_t* mmap) {
     }
 }
 
-uint32_t memBitmapGetPhysMemSize() {
+uint32_t memBitmapGetPhysMemSize()
+{
     return physicalMemSize;
+}
+
+uint32_t memBitmapGetTotalSize()
+{
+    return bitmapSize;
+}
+
+uint32_t memBitmapGetAddr()
+{
+    return (uint32_t)bitmap;
+}
+
+multiboot_info_t* memBitmapGetMBI()
+{
+    return (multiboot_info_t*)((void*)bitmap + (physicalMemSize>>12)/8);
 }
 
 // Find a physical region to store the memory bitmap (which will be used in the kernel-proper)
@@ -108,17 +126,18 @@ uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot
 {
     memBitmapPrepare(mmap);
 
-    uint32_t bitmapSize = (physicalMemSize >> 12) / 8;
+    placementAddr = ((placementAddr+0x1000-1)/0x1000) * 0x1000;
+    bitmapSize = (physicalMemSize >> 12) / 8 + mbi->total_size;
+
     if (!regionsExclude(placementAddr, bitmapSize, kernel_mod->mod_start, kernel_mod->mod_end))
     {
         placementAddr = kernel_mod->mod_end;
     }
-    if (!regionsExclude(placementAddr, bitmapSize, (uint32_t)mbi, (uint32_t)mbi + mbi->total_size))
-    {
-        placementAddr = kernel_mod->mod_end;
-    }
 
+    placementAddr = ((placementAddr+0x1000-1)/0x1000) * 0x1000;
     bitmap = (uint32_t*) placementAddr;
+    memmove((void*)placementAddr + (physicalMemSize >> 12) / 8, mbi, mbi->total_size);
+
     memBitmapMarkUnusable(mmap);
 
     for(uint32_t page = 0; page < 0x100000; page += 0x1000)
@@ -128,21 +147,13 @@ uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot
     for (uint32_t page = kernel_mod->mod_start; page < kernel_mod->mod_end; page += 0x1000)
         setFrame(page);
 
-    // Mark the bitmap as unusable memory
-    uint32_t start_addr = ((uint32_t)bitmap / 0x1000) * 0x1000;
-    uint32_t end_addr = (((uint32_t)bitmap + bitmapSize - 1) / 0x1000) * 0x1000;
-    for (uint32_t page = start_addr; page <= end_addr; page += 0x1000)
+    // Mark the bitmap + multiboot structure as unusable memory
+    for (uint32_t page = (uint32_t)bitmap; page < (uint32_t)bitmap + bitmapSize; page += 0x1000)
         setFrame(page);
 
     // Mark the loader as unusable memory
-    end_addr = (((uint32_t)&loader_end - 1) / 0x1000) * 0x1000;
+    uint32_t end_addr = (((uint32_t)&loader_end - 1) / 0x1000) * 0x1000;
     for (uint32_t page = 0x100000; page <= end_addr; page += 0x1000)
-        setFrame(page);
-
-    // Mark the multiboot structure
-    start_addr = ((uint32_t)mbi / 0x1000) * 0x1000;
-    end_addr = (((uint32_t)mbi + mbi->total_size - 1) / 0x1000) * 0x1000;
-    for (uint32_t page = start_addr; page <= end_addr; page += 0x1000)
         setFrame(page);
 
     return (uint32_t) bitmap;

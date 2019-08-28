@@ -10,6 +10,10 @@ uint8_t testFrame(uint32_t addr);
 uint32_t freeFrame();
 
 uint32_t memBitmapGetPhysMemSize();
+uint32_t memBitmapGetTotalSize();
+uint32_t memBitmapGetAddr();
+multiboot_info_t* memBitmapGetMBI();
+
 uint32_t memBitmapAllocate(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, multiboot_info_t* mbi);
 
 #endif

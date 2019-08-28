@@ -74,6 +74,6 @@ typedef struct
     uint32_t p_align;
 }__attribute__((packed)) program_header;
 
-void elfLoadFromMem(void* ptr);
+uint32_t elfLoadFromMem(void* ptr);
 
 #endif

@@ -19,6 +19,8 @@ typedef struct pt_entry
 
 int isPageMapped(uint32_t vaddr);
 void mmap(uint32_t vaddr);
-void vmemInit(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, mtag_framebuf_t* fbuf, multiboot_info_t* mbi);
+void unmap(uint32_t vaddr);
+uint32_t getPhysAddr(uint32_t vaddr);
+uint32_t vmemInit(mtag_mods_t* kernel_mod, mtag_mmap_t* mmap, mtag_framebuf_t* fbuf, multiboot_info_t* mbi);
 
 #endif

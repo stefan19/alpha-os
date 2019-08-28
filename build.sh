@@ -5,3 +5,5 @@ cd $ROOT/libk
 make
 cd $ROOT/kernel
 make
+cd $ROOT/loader
+make

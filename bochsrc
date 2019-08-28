@@ -5,16 +5,15 @@ display_library: x
 memory: host=32, guest=32
 romimage: file="/usr/share/bochs/BIOS-bochs-latest"
 vgaromimage: file="/usr/share/bochs/VGABIOS-lgpl-latest"
-boot: floppy
+boot: cdrom
 floppy_bootsig_check: disabled=0
 floppya: type=1_44, 1_44="boot/os.img", status=inserted, write_protected=0
-
 # no floppyb
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+ata0-master: type=cdrom, path="boot.iso", status=inserted, biosdetect=auto, model="Generic 1234"
 ata1: enabled=1, ioaddr1=0x170, ioaddr2=0x370, irq=15
 ata2: enabled=0
 ata3: enabled=0
-ata0-master: type=disk, path="c.img", mode=flat, cylinders=20, heads=16, spt=63
 pci: enabled=1, chipset=i440fx
 vga: extension=vbe, update_freq=5
 cpu: count=1, ips=4000000, model=bx_generic, reset_on_triple_fault=0, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0

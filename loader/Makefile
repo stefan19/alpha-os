@@ -1,6 +1,6 @@
 TARGET := i686-elf
 CROSSDIR := $(HOME)/opt/cross/bin
-ROOT := $(HOME)/Documents/OS/loader
+ROOT := $(HOME)/Documents/OS
 
 CC := $(CROSSDIR)/$(TARGET)-gcc
 LINKER := $(CROSSDIR)/$(TARGET)-gcc
@@ -21,7 +21,7 @@ clean:
 	find obj/ -type f -name '*.o' -delete
 
 link:
-	$(LINKER) $(LDFLAGS) -o $(ROOT)/iso/loader $(OBJECTS) -lgcc
+	$(LINKER) $(LDFLAGS) -o $(ROOT)/i386-loader $(OBJECTS) -lgcc
 
 $(OBJDIR)/%.o: %.s
 	nasm $(ASFLAGS) -o $@ $<
