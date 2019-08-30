@@ -22,9 +22,13 @@ extern void loadPageDirectory(uint32_t addr);
 extern void enablePaging();
 extern void invalidatePage(uint32_t addr);
 uint32_t getPhysAddress(uint32_t virtAddress);
+
 void mapVirtAddress(uint32_t virtAddress, uint32_t physAddress, uint8_t user);
 void unmap(uint32_t vaddr);
 void requestPage(uint32_t vaddr);
 void requestPageUser(uint32_t vaddr);
+uint32_t newAddressSpace();
+
+void handlePageFault(uint32_t err_code);
 
 #endif

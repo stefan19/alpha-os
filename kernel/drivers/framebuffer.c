@@ -46,6 +46,27 @@ void framebufferDrawPixel(uint32_t x, uint32_t y, uint32_t color)
     where[fbuf->framebuffer_red_field_pos/8] = (color >> 16) & 0xFF;
 }
 
+void framebufferFillRct(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
+{
+    uint8_t* vmem = (uint8_t*)(LINEAR_FRAMEBUF + fbuf->framebuffer_pitch * y + fbuf->framebuffer_bpp / 8 * x);
+
+    uint32_t i, j, idx;
+    for(j=y;j<y+h;j++)
+    {
+        idx = 0;
+        for(i=0; i<w; i++)
+        {
+            vmem[idx + fbuf->framebuffer_blue_field_pos/8] = color & 0xFF;
+            vmem[idx + fbuf->framebuffer_green_field_pos/8] = (color >> 8) & 0xFF;
+            vmem[idx + fbuf->framebuffer_red_field_pos/8] = (color >> 16) & 0xFF;
+
+            idx += fbuf->framebuffer_bpp / 8;
+        }
+
+        vmem += fbuf->framebuffer_pitch;
+    }
+}
+
 void framebufferDrawMonochromeBitmap(uint8_t* bmp, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t bg, uint32_t fg)
 {
     uint8_t* vmem;

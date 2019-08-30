@@ -116,6 +116,11 @@ void consoleClr(void)
     framebufferClear(bg_color);
 }
 
+static void consoleDrawCursor()
+{
+    framebufferFillRct(x, y + char_height - 1, char_width, 1, fg_color);
+}
+
 void consolePutchColor(char c, uint32_t fg)
 {
     if (c == '\n')

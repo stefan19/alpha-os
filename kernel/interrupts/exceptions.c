@@ -1,6 +1,7 @@
 #include "isr.h"
 #include "console.h"
 #include "ll_io.h"
+#include "paging.h"
 
 const char error_strings[21][87] = {
     "division by 0 error",
@@ -28,6 +29,12 @@ const char error_strings[21][87] = {
 
 void exceptionHandler(const interrupt_frame_t* frame)
 {
+    if(frame->int_no == 14)
+    {
+        handlePageFault(frame->err_code);
+        return;
+    }
+
     consoleWriteStrColor("\nFATAL ERROR: ", 0xD00000);
     if(frame->int_no <= 20)
         consoleWriteStrColor(error_strings[frame->int_no], 0xD00000);   
@@ -36,7 +43,7 @@ void exceptionHandler(const interrupt_frame_t* frame)
     else
         consoleWriteStrColor("?", 0xD00000);
 
-    if(frame->int_no == 14)
+    /* if(frame->int_no == 14)
     {
         consoleWriteStrColor(" at address: ", 0xD00000);
         consoleWriteHex(readCR2());
@@ -45,11 +52,7 @@ void exceptionHandler(const interrupt_frame_t* frame)
         rw = (frame->err_code & 0x2) >> 1;
         user = (frame->err_code & 0x4) >> 2;
         printf(" %x %x %x", p, rw, user);   
-    }
-    if(frame->int_no == 13)
-    {
-        printf(" with error code: %x", frame->err_code);
-    }
+    } */
 
     asm volatile("cli");
     asm volatile("hlt");
